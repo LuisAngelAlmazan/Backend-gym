@@ -10,8 +10,8 @@ export default registerAs(
     ({
       type: 'postgres',
       database: process.env.DB_NAME,
-      //host: process.env.DB_HOST,
-      host:"postgresdb",
+      host: process.env.DB_HOST,
+      //host:"postgresdb",
       port: parseInt(process.env.DB_PORT, 10),
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
@@ -24,5 +24,8 @@ export default registerAs(
       dropSchema: true,
       retryAttempts: parseInt(process.env.DB_RETRY_ATTEMPTS, 10) || 5,
       retryDelay: parseInt(process.env.DB_RETRY_DELAY, 10) || 3000,
+      ssl: {
+        rejectUnauthorized: false,
+      },
     }) as DataSourceOptions,
 );
