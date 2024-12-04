@@ -6,24 +6,22 @@ import { Routine } from 'src/database/entities/routines.entity';
 import * as data from '../../utils/mockRoutines.json';
 
 @Injectable()
-export class RoutinesService{
+export class RoutinesService {
   constructor(
     @InjectRepository(Routine)
     private readonly routineRepository: Repository<Routine>,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
-
   async initializeRoutines() {
     try {
-      // Los datos se importan desde el archivo mockRoutines.json
-      const routines = data; // Ya tienes el array de rutinas listo
+      const routines = data; 
 
-      // Iterar sobre las rutinas y guardarlas en la base de datos
       const savedRoutines = [];
       for (const routine of routines) {
         const newRoutine = this.routineRepository.create({
-          routine: routine.routine, // Usamos el campo `routine` desde el archivo JSON
+          name: routine.name, 
+          routine: routine.routine,
         });
 
         savedRoutines.push(await this.routineRepository.save(newRoutine));
@@ -36,8 +34,6 @@ export class RoutinesService{
       throw error;
     }
   }
-
-
 
   async uploadRoutine(file: Express.Multer.File) {
     const routineUrl = await this.cloudinaryService.uploadFile(file);

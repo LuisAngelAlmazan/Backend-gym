@@ -37,11 +37,11 @@ export class ClassesCustomRepository {
   
     for (const person of data) {
       const trainer = trainers.find(
-        (t) => `${t.userID.name}` === person.trainerId,
+        (t) => `${t.userID.name}` === person.trainerName,
       );
   
-      const trainerId = trainer ? trainer.id : null;
-      const trainerName = trainer ? trainer.userID.name : 'Sin entrenador';
+      const trainerName = trainer ? trainer.id : null;
+     
   
       // Crear la clase
       const newClass = await this.classesRepository
@@ -56,7 +56,7 @@ export class ClassesCustomRepository {
           imgUrl: person.imgUrl,
           created_at: new Date(),
           update_at: new Date(),
-          trainer: trainerId,
+          trainer: trainerName,
         })
         .orIgnore()
         .execute();
@@ -82,7 +82,7 @@ export class ClassesCustomRepository {
   
       console.log(
         `Clase "${person.name}" creada con ${
-          trainer ? `entrenador UUID ${trainerId}` : '"Sin entrenador"'
+          trainer ? `entrenador  ${trainerName}` : '"Sin entrenador"'
         }.`,
       );
     }
@@ -113,19 +113,20 @@ export class ClassesCustomRepository {
   }
 
   async createClass(createClassDto: CreateClassDto): Promise<Classes> {
-  const { schedules, trainerId, ...classData } = createClassDto;
-
-
+  const { name,schedules, trainerId, ...classData } = createClassDto;
+ 
+  const existingClass= await this.classesRepository.findOne({where:{name}})
   let trainer = null;
   if (trainerId) {
     trainer = await this.trainerRepository.getTrainerById(trainerId);
     if (!trainer) {
-      throw new Error('El entrenador especificado no existe.');
+      throw new NotFoundException('El entrenador especificado no existe.');
     }
   }
 
 
   const newClass = this.classesRepository.create({
+    name,
     ...classData,
     trainer,
   });
@@ -147,11 +148,11 @@ export class ClassesCustomRepository {
  async updateClass(id: string, updateClassDto: UpdateClassDto): Promise<Classes> {
     const classToUpdate = await this.classesRepository.findOne({
       where: { id },
-      relations: ['schedules', 'bookedClasses'],
+      relations: ['schedules', 'bookedClasses','trainer'],
     });
   
     if (!classToUpdate) {
-      throw new Error('Clase no encontrada');
+      throw new NotFoundException('Clase no encontrada');
     }
   
    
@@ -177,7 +178,7 @@ export class ClassesCustomRepository {
       const trainer = await this.trainerRepository.getTrainerById(updateClassDto.trainerId);
   
       if (!trainer) {
-        throw new Error('Entrenador no encontrado');
+        throw new NotFoundException('Entrenador no encontrado');
       }
   
       classToUpdate.trainer = trainer;
