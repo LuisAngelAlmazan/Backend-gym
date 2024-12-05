@@ -8,6 +8,8 @@ import { Payment } from 'src/database/entities/payment.entity';
 import { MembershipStatus } from 'src/enum/membership_status.enum';
 import { UsersCustomRepository } from '../users/users.repository';
 import { PaymentsCustomRepository } from './payments.repository';
+import { EmailService } from '../email/email.service';
+import { Role } from 'src/enum/roles.enum';
 const stripe = require('stripe')(process.env.SECRET_STRIPE);
 
 @Injectable()
@@ -20,11 +22,13 @@ export class PaymentsService {
     @InjectRepository(Payment)
     private readonly paymentsRepository: Repository<Payment>,
     private readonly paymentsCustomRepository: PaymentsCustomRepository,
+    private readonly emailService:EmailService
   ) {}
 
   async addMemberships() {
     return await this.paymentsCustomRepository.initializePayments();
   }
+
   async createCustomer(createCustomerDto: CreateCustomerDto) {
     const { userEmail, userName, stripePriceId } = createCustomerDto;
 
@@ -52,8 +56,9 @@ export class PaymentsService {
         payment_method_types: ['card'],
         customer: customer.id,
         success_url:
-          process.env.DOMAIN_STRIPE+"/payment/success?session_id={CHECKOUT_SESSION_ID}",
-        cancel_url: process.env.DOMAIN_STRIPE+"/cancel",
+          process.env.DOMAIN_STRIPE +
+          '/payment/success?session_id={CHECKOUT_SESSION_ID}',
+        cancel_url: process.env.DOMAIN_STRIPE + '/cancel',
         metadata: {
           stripePriceId: stripePriceId,
           userEmail: userEmail,
@@ -148,16 +153,23 @@ export class PaymentsService {
       await this.paymentsRepository.save(paymentData);
 
       user.membership_status = MembershipStatus.Active;
+      user.roles = Role.Associate;
 
       const updatedUser = await this.usersCustomRepository.updateUser(
         user.id,
         user,
       ); // Aquí usamos `save`, que actualizará el usuario correctamente
 
+      await this.emailService.sendMembershipNotificationEmail(
+        user.email,
+        user.name,
+        membership.name,
+      );
       console.log({
         message: `Pago procesado exitosamente. El estado de la membresía del usuario ahora es: ${updatedUser.membership_status}`,
         paymentData,
         userData: updatedUser,
+        roles: updatedUser.roles,
         membershipStatus: updatedUser.membership_status,
       });
 
@@ -165,6 +177,7 @@ export class PaymentsService {
         message: `Pago procesado exitosamente. El estado de la membresía del usuario ahora es: ${updatedUser.membership_status}`,
         paymentData,
         userData: updatedUser,
+        roles: updatedUser.roles,
         membershipStatus: updatedUser.membership_status,
       };
     } catch (error) {
